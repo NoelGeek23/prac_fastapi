@@ -20,6 +20,8 @@ import shutil
 from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 from datetime import datetime, timezone, timedelta
+from fastapi import WebSocket, WebSocketDisconnect
+from typing import Dict, List
 
 
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8000")
@@ -877,15 +879,11 @@ async def send_message(
     sender = payload.get("sub")
     await check_frozen(sender, session)
 
-    # Check if receiver exists
-    receiver_result = await session.execute(
-        select(User).where(User.username == receiver)
-    )
+    receiver_result = await session.execute(select(User).where(User.username == receiver))
     receiver_user = receiver_result.scalar_one_or_none()
     if not receiver_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # ✅ Skip friendship check if receiver is admin
     if not receiver_user.is_admin:
         friendship_result = await session.execute(
             select(Friendship).where(
@@ -902,6 +900,15 @@ async def send_message(
     message = Message(sender=sender, receiver=receiver, text=text)
     session.add(message)
     await session.commit()
+
+    # ✅ Real time notification
+    await manager.send_personal_message({
+        "type": "new_message",
+        "sender": sender,
+        "text": text,
+        "created_at": message.created_at.isoformat()
+    }, receiver)
+
     return {"message": "Message sent"}
 
 
@@ -1251,6 +1258,13 @@ async def admin_send_message(
     message = Message(sender=current_username, receiver=receiver, text=text)
     session.add(message)
     await session.commit()
+    # ✅ Notify receiver in real time if online
+    await manager.send_personal_message({
+        "type": "new_message",
+        "sender": current_username,  # or current_username for admin
+        "text": text,
+        "created_at": message.created_at.isoformat()
+    }, receiver)
     return {"message": "Message sent"}
 
 
@@ -1290,3 +1304,50 @@ async def admin_get_messages(
         }
         for m in messages
     ]
+
+# -------- Connection Manager --------
+class ConnectionManager:
+    def __init__(self):
+        # Store active connections: {username: websocket}
+        self.active_connections: Dict[str, WebSocket] = {}
+
+    async def connect(self, username: str, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections[username] = websocket
+
+    def disconnect(self, username: str):
+        if username in self.active_connections:
+            del self.active_connections[username]
+
+    async def send_personal_message(self, message: dict, username: str):
+        if username in self.active_connections:
+            await self.active_connections[username].send_json(message)
+
+manager = ConnectionManager()
+
+
+@app.websocket("/ws/{username}")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    username: str,
+    token: str,
+    session: AsyncSession = Depends(get_async_session)
+):
+    # Verify token
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        token_username = payload.get("sub")
+        if token_username != username:
+            await websocket.close(code=1008)
+            return
+    except JWTError:
+        await websocket.close(code=1008)
+        return
+
+    await manager.connect(username, websocket)
+    try:
+        while True:
+            # Keep connection alive — actual messages sent via REST
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(username)

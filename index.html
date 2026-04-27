@@ -132,6 +132,101 @@ let isAdmin = false;
 let mouseX = 0;
 let mouseY = 0;
 
+// ========== WEBSOCKET ==========
+let ws = null;
+
+function connectWebSocket() {
+    if (!token || !currentUsername) return;
+
+    const wsUrl = `wss://web-production-25a19.up.railway.app/ws/${currentUsername}?token=${token}`;
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+        console.log("WebSocket connected ✅");
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "new_message") {
+            const sender = data.sender;
+
+            // Check if chat box is open for this sender
+            const chatBox = document.getElementById(`chat-${sender}`);
+            const adminChatBox = document.getElementById(`adminChat-${sender}`);
+
+            if (chatBox && chatBox.style.display === "block") {
+                // ✅ Append message directly without full reload
+                appendMessage(`chatHistory-${sender}`, data, currentUsername);
+            } else if (adminChatBox && adminChatBox.style.display === "block") {
+                appendMessage(`adminChatHistory-${sender}`, data, currentUsername);
+            } else {
+                // ✅ Show notification if chat not open
+                showMessageNotification(sender);
+            }
+
+            // Refresh friends panel to update admin messages section
+            if (sender === "admin") {
+                loadFriends();
+            }
+        }
+    };
+
+    ws.onclose = () => {
+        console.log("WebSocket disconnected — reconnecting in 3s...");
+        setTimeout(connectWebSocket, 3000); // auto reconnect
+    };
+
+    ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+    };
+}
+
+function appendMessage(containerId, m, currentUsername) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const isMe = m.sender === currentUsername;
+    const isAdminMsg = m.sender === "admin";
+    const div = document.createElement("div");
+    div.style.cssText = `
+        max-width:80%;
+        padding:6px 10px;
+        border-radius:12px;
+        font-size:12px;
+        word-break:break-word;
+        align-self:${isMe ? "flex-end" : "flex-start"};
+        background:${isAdminMsg ? "linear-gradient(135deg,#ff6b6b,#764ba2)" : isMe ? "#0095f6" : "#e0e0e0"};
+        color:${isAdminMsg || isMe ? "white" : "#262626"};
+        border:${isAdminMsg ? "2px solid #ff4757" : "none"};
+    `;
+    div.innerHTML = `
+        ${isAdminMsg ? '<div style="font-size:10px;font-weight:700;margin-bottom:2px;">📨 Admin Message</div>' : ""}
+        ${m.text}
+        <div style="font-size:10px;opacity:0.7;margin-top:2px;">${formatInIST(m.created_at + 'Z')}</div>
+    `;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function showMessageNotification(sender) {
+    // Show a small toast notification
+    const existing = document.getElementById("msgToast");
+    if (existing) existing.remove();
+
+    const toast = document.createElement("div");
+    toast.id = "msgToast";
+    toast.style.cssText = `
+        position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+        background:#262626;color:white;padding:10px 20px;border-radius:20px;
+        font-size:13px;z-index:9999;box-shadow:0 4px 15px rgba(0,0,0,0.3);
+    `;
+    toast.innerHTML = `💬 New message from <b>${sender}</b>`;
+    document.body.appendChild(toast);
+
+    setTimeout(() => toast.remove(), 3000);
+}
+
 // Initialize after DOM is ready
 function initializeMagnet() {
     circles = document.querySelectorAll('.story');
@@ -751,6 +846,7 @@ async function login() {
 
     // Load feed after login
     loadFeed();
+    connectWebSocket(); 
     if (isAdmin) {
     loadReportBell();  // ✅ add this
     }
@@ -858,6 +954,10 @@ async function sendMessage(username) {
 }
 
 function logout() {
+    if (ws) {
+        ws.close();
+        ws = null;
+    }
     token = "";
     currentUsername = "";
     isAdmin = false;
