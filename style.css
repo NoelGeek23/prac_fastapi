@@ -593,3 +593,183 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+
+/* ========== MOBILE RESPONSIVE ========== */
+@media (max-width: 768px) {
+
+    /* Navbar */
+    .navbar {
+        font-size: 22px;
+        padding: 12px;
+    }
+
+    /* Auth Box */
+    .auth-box {
+        min-width: 90vw;
+        padding: 24px;
+        top: 45%;
+    }
+
+    /* Upload Box */
+    .upload-box {
+        width: 90vw;
+        margin: 10px auto;
+        padding: 15px;
+    }
+
+    /* Feed */
+    .feed {
+        width: 95vw;
+        margin: 0 auto;
+    }
+
+    /* Top Right Section */
+    #topRightSection {
+        position: fixed;
+        top: 8px;
+        right: 8px;
+        gap: 6px;
+        flex-wrap: wrap;
+        max-width: 60vw;
+        justify-content: flex-end;
+    }
+
+    .user-profile-pic {
+        width: 32px;
+        height: 32px;
+    }
+
+    /* Hide file input text on mobile */
+    .profile-form-inline input[type="file"] {
+        display: none;
+    }
+
+    /* Update profile button smaller */
+    .profile-form-inline button {
+        padding: 7px 10px;
+        font-size: 11px;
+    }
+
+    #logoutBtn {
+        padding: 7px 12px;
+        font-size: 11px;
+    }
+
+    #adminBtn {
+        padding: 7px 10px;
+        font-size: 11px;
+    }
+
+    /* Stories */
+    .stories {
+        gap: 20px;
+        padding: 12px;
+        overflow-x: auto;
+        justify-content: flex-start;
+        margin-right: 0;
+    }
+
+    .story {
+        width: 48px;
+        height: 48px;
+        flex-shrink: 0;
+    }
+
+    /* Post */
+    .post {
+        border-radius: 8px;
+    }
+
+    .avatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    /* Side Panel (search + friends) */
+    #sidePanel {
+        position: fixed;
+        bottom: 0;
+        top: auto;
+        right: 0;
+        left: 0;
+        width: 100vw;
+        max-height: 50vh;
+        overflow-y: auto;
+        border-radius: 16px 16px 0 0;
+        background: white;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+        padding: 10px;
+        z-index: 997;
+    }
+
+    /* Admin Panel */
+    #adminPanel {
+        width: 95vw !important;
+        right: 2.5vw !important;
+        top: 55px !important;
+        max-height: 80vh !important;
+    }
+
+    /* Report Panel */
+    #reportPanel {
+        width: 95vw !important;
+        left: 2.5vw !important;
+        top: 55px !important;
+    }
+
+    /* Report Bell */
+    #reportBell {
+        top: 12px !important;
+        left: 12px !important;
+    }
+
+    /* Comment box */
+    .comment-box input {
+        font-size: 13px;
+    }
+
+    .comment-box button {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    /* Actions */
+    .actions {
+        font-size: 20px;
+        padding: 8px 12px;
+    }
+
+    /* Caption and likes */
+    .caption, .likes {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+
+    .time {
+        font-size: 11px;
+        padding: 4px 12px 10px 12px;
+    }
+}
+
+/* Extra small phones */
+@media (max-width: 400px) {
+    .navbar {
+        font-size: 18px;
+    }
+
+    .auth-box {
+        padding: 18px;
+    }
+
+    .upload-box {
+        width: 95vw;
+    }
+
+    .feed {
+        width: 98vw;
+    }
+
+    #topRightSection {
+        max-width: 70vw;
+    }
+}

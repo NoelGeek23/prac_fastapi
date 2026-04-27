@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Loopin</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -19,7 +20,7 @@
 </div>
 
 <!-- 🔵 Stories -->
-<div class="stories">
+<div class="stories" id="storiesContainer">
     <div class="story"></div>
     <div class="story"></div>
     <div class="story"></div>
@@ -146,31 +147,29 @@ function connectWebSocket() {
     };
 
     ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+    const data = JSON.parse(event.data);
 
-        if (data.type === "new_message") {
-            const sender = data.sender;
+    if (data.type === "new_message") {
+        const sender = data.sender;
 
-            // Check if chat box is open for this sender
-            const chatBox = document.getElementById(`chat-${sender}`);
-            const adminChatBox = document.getElementById(`adminChat-${sender}`);
+        // ✅ Check if chat box with this sender is open
+        const chatBox = document.getElementById(`chat-${sender}`);
+        const adminChatBox = document.getElementById(`adminChat-${sender}`);
 
-            if (chatBox && chatBox.style.display === "block") {
-                // ✅ Append message directly without full reload
-                appendMessage(`chatHistory-${sender}`, data, currentUsername);
-            } else if (adminChatBox && adminChatBox.style.display === "block") {
-                appendMessage(`adminChatHistory-${sender}`, data, currentUsername);
-            } else {
-                // ✅ Show notification if chat not open
-                showMessageNotification(sender);
-            }
-
-            // Refresh friends panel to update admin messages section
-            if (sender === "admin") {
-                loadFriends();
-            }
+        if (chatBox && chatBox.style.display === "block") {
+            // ✅ Append only the new message, don't reload all
+            appendMessage(`chatHistory-${sender}`, data, currentUsername);
+        } else if (sender === "admin") {
+            // ✅ Admin message — refresh friends panel to show it
+            loadFriends();
+        } else if (adminChatBox && adminChatBox.style.display === "block") {
+            appendMessage(`adminChatHistory-${sender}`, data, currentUsername);
+        } else {
+            // ✅ Chat not open — show notification
+            showMessageNotification(sender);
         }
-    };
+    }
+};
 
     ws.onclose = () => {
         console.log("WebSocket disconnected — reconnecting in 3s...");
@@ -665,7 +664,12 @@ async function sendAdminMessage(username) {
 
     if (res.ok) {
         input.value = "";
-        await loadAdminChatHistory(username);
+        // ✅ Append message immediately to admin's chat box
+        appendMessage(`adminChatHistory-${username}`, {
+            sender: currentUsername,
+            text: text,
+            created_at: new Date().toISOString()
+        }, currentUsername);
     } else {
         const error = await res.json();
         alert("Failed: " + error.detail);
@@ -946,7 +950,12 @@ async function sendMessage(username) {
 
     if (res.ok) {
         input.value = "";
-        await loadChatHistory(username); // refresh chat
+        // ✅ Append message immediately to sender's chat box
+        appendMessage(`chatHistory-${username}`, {
+            sender: currentUsername,
+            text: text,
+            created_at: new Date().toISOString()
+        }, currentUsername);
     } else {
         const error = await res.json();
         alert("Failed: " + error.detail);
@@ -1294,6 +1303,62 @@ async function markReviewed(reportId) {
         loadReportBell();    // refresh bell count
     }
 }
+
+// ========== GYROSCOPE FOR MOBILE ==========
+function initializeGyroscope() {
+    if (!window.DeviceOrientationEvent) return;
+
+    // Request permission on iOS 13+
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        // iOS requires user gesture to request permission
+        document.querySelector('.stories').addEventListener('click', () => {
+            DeviceOrientationEvent.requestPermission()
+                .then(permissionState => {
+                    if (permissionState === 'granted') {
+                        window.addEventListener('deviceorientation', handleGyro);
+                    }
+                })
+                .catch(console.error);
+        }, { once: true });
+    } else {
+        // Android and other devices — no permission needed
+        window.addEventListener('deviceorientation', handleGyro);
+    }
+}
+
+function handleGyro(event) {
+    const beta = event.beta;   // front-back tilt (-180 to 180)
+    const gamma = event.gamma; // left-right tilt (-90 to 90)
+
+    if (beta === null || gamma === null) return;
+
+    circles.forEach((circle, index) => {
+        // Each circle moves slightly differently for natural feel
+        const factor = (index + 1) * 0.3;
+        const moveX = gamma * factor * 0.4;  // left-right
+        const moveY = beta * factor * 0.2;   // up-down
+
+        // Clamp movement so circles don't go too far
+        const clampedX = Math.max(-30, Math.min(30, moveX));
+        const clampedY = Math.max(-20, Math.min(20, moveY));
+
+        circle.style.transform = `translate(${clampedX}px, ${clampedY}px)`;
+        circle.style.animation = 'none';
+    });
+}
+
+// ✅ On desktop use mouse magnet, on mobile use gyroscope
+function initializeMotion() {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+        initializeGyroscope();
+    } else {
+        initializeMagnet();
+    }
+}
+
+// Replace initializeMagnet() call at bottom with:
+initializeMotion();
 
 loadFeed();
 
