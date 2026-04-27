@@ -363,8 +363,6 @@ async def login(username: str = Form(...), password: str = Form(...), session: A
     return {"access_token": token, "is_admin": user.is_admin}
 
 
-
-
 @app.delete("/post/{post_id}")
 async def delete_post(
     post_id: str,
@@ -379,16 +377,9 @@ async def delete_post(
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
-    # Get current user info
-    username = None
-    
     if authorization:
         try:
-            # Handle both "Bearer <token>" and plain token formats
-            if " " in authorization:
-                token = authorization.split(" ")[1]
-            else:
-                token = authorization
+            token = authorization.split(" ")[1] if " " in authorization else authorization
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             username = payload.get("sub")
         except (IndexError, JWTError):
@@ -396,7 +387,6 @@ async def delete_post(
     else:
         raise HTTPException(status_code=401, detail="Login required")
 
-    # Get user to check if admin
     user_result = await session.execute(
         select(User).where(User.username == username)
     )
@@ -405,16 +395,22 @@ async def delete_post(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Admins can delete any post, regular users can only delete their own
     if not user.is_admin and post.username != username:
         raise HTTPException(status_code=403, detail="Can only delete your own posts")
+
+    # ✅ Delete comments first before deleting post
+    comments_result = await session.execute(
+        select(Comment).where(Comment.post_id == post_id)
+    )
+    comments = comments_result.scalars().all()
+    for comment in comments:
+        await session.delete(comment)
 
     # 🗑 delete image file
     file_path = os.path.join("uploads", post.filename)
     if os.path.exists(file_path):
         os.remove(file_path)
 
-    # 🗑 delete from DB
     await session.delete(post)
     await session.commit()
 
@@ -791,24 +787,32 @@ async def delete_user(
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Delete all their posts and post files
+    # ✅ Delete comments on user's posts FIRST (foreign key constraint)
     posts_result = await session.execute(
         select(Post).where(Post.username == username)
     )
     posts = posts_result.scalars().all()
     for post in posts:
+        comments_on_post = await session.execute(
+            select(Comment).where(Comment.post_id == post.id)
+        )
+        for comment in comments_on_post.scalars().all():
+            await session.delete(comment)
+
+    # ✅ Delete all comments made by user on other posts
+    comments_result = await session.execute(
+        select(Comment).where(Comment.username == username)
+    )
+    for comment in comments_result.scalars().all():
+        await session.delete(comment)
+
+    # Now safe to delete posts
+    for post in posts:
         file_path = os.path.join("uploads", post.filename)
         if os.path.exists(file_path):
             os.remove(file_path)
         await session.delete(post)
-
-    # Delete all their comments
-    comments_result = await session.execute(
-        select(Comment).where(Comment.username == username)
-    )
-    comments = comments_result.scalars().all()
-    for comment in comments:
-        await session.delete(comment)
+   
 
     # Delete all their friendships
     friendships_result = await session.execute(
