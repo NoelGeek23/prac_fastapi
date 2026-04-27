@@ -31,7 +31,7 @@ class Post(Base):
     url = Column(String, nullable=False)
     filetype = Column(String, nullable=False)
     filename = Column(String, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.utcnow())
     username = Column(String, nullable=False)
 
 class Comment(Base):
@@ -39,7 +39,7 @@ class Comment(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     text = Column(Text, nullable=False)
     username = Column(String, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.utcnow())
     post_id = Column(String, ForeignKey("posts.id"))
     post = relationship("Post")
 
@@ -59,7 +59,7 @@ class Friendship(Base):
     sender = Column(String, nullable=False)
     receiver = Column(String, nullable=False)
     status = Column(String, default="pending")
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.utcnow())
 
 class Message(Base):
     __tablename__ = "messages"
@@ -67,7 +67,7 @@ class Message(Base):
     sender = Column(String, nullable=False)
     receiver = Column(String, nullable=False)
     text = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.utcnow())
 
 class Report(Base):
     __tablename__ = "reports"
@@ -75,7 +75,7 @@ class Report(Base):
     reporter = Column(String, nullable=False)
     reported = Column(String, nullable=False)
     reason = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.utcnow())
     is_reviewed = Column(Boolean, default=False)
 
 # ✅ SSL required for Neon - remove sslmode from URL and handle via ssl context

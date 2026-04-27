@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
-    <title>Instagram</title>
+    <title>Loopin</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -105,7 +105,7 @@
 </div>
 
 <script>
-const API = "http://127.0.0.1:8000";
+const API = "https://web-production-25a19.up.railway.app";
 
 // Function to format date in Indian Standard Time (IST)
 function formatInIST(dateString) {
@@ -384,7 +384,7 @@ async function signin() {
         return;
     }
 
-    const res = await fetch("http://127.0.0.1:8000/login", {
+    const res = await fetch("https://web-production-25a19.up.railway.app/login", {
         method: "POST",
         body: new URLSearchParams({ username, password })
     });
@@ -443,7 +443,7 @@ async function signup() {
         return;
     }
 
-    const res = await fetch("http://127.0.0.1:8000/signup", {
+    const res = await fetch("https://web-production-25a19.up.railway.app/signup", {
         method: "POST",
         body: new URLSearchParams({ username, password })
     });
@@ -720,7 +720,7 @@ async function login() {
         return;
     }
 
-    const res = await fetch("http://127.0.0.1:8000/login", {
+    const res = await fetch("https://web-production-25a19.up.railway.app/login", {
         method: "POST",
         body: new URLSearchParams({ username, password })
     });
@@ -878,7 +878,7 @@ function doubleLike(postId, container) {
     likeAnimation(container);
 
     // call backend like
-    fetch(`http://127.0.0.1:8000/like/${postId}`, {
+    fetch(`https://web-production-25a19.up.railway.app/like/${postId}`, {
         method: "POST"
     }).then(res => res.json())
       .then(data => {
