@@ -1,0 +1,15 @@
+[project]
+name = "prac-fastapi"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "fastapi>=0.135.3",
+    "fastapi-users[sqlalchemy]>=15.0.5",
+    "imagekitio>=3.0.2",
+    "python-dotenv>=1.2.2",
+    "uvicorn[standard]>=0.44.0",
+]
+

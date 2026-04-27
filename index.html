@@ -1,0 +1,1203 @@
+<!-- file: index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <title>Instagram</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="navbar">Loopin</div>
+
+<div class="auth-box" id="authBox">
+    <input id="username" placeholder="Username">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="signup()">Signup</button>
+    <button onclick="login()">Login</button>
+</div>
+
+<!-- 🔵 Stories -->
+<div class="stories">
+    <div class="story"></div>
+    <div class="story"></div>
+    <div class="story"></div>
+    <div class="story"></div>
+    <div class="story"></div>
+    <div class="story"></div>
+    <div class="story"></div>
+    <div class="story"></div>
+</div>
+
+<!-- Upload -->
+<div class="upload-box" id="uploadBox" style="display: none;">
+    <form id="uploadForm">
+        <input type="file" name="file" required />
+        <input type="text" name="caption" placeholder="Write a caption..." />
+        <button type="submit">Upload</button>
+    </form>
+</div>
+
+<!-- Profile Picture Upload & Logout -->
+<div class="top-right-section" id="topRightSection" style="display: none;">
+    <div class="user-profile-display">
+        <img id="userProfilePic" class="user-profile-pic" alt="Your profile" />
+    </div>
+    <form id="profileForm" class="profile-form-inline">
+        <input type="file" name="profile" accept="image/*" required />
+        <button type="submit">Update Profile</button>
+    </form>
+    <button id="adminBtn" onclick="openAdminPanel()" style="display: none;">Admin Panel</button>
+    <button id="logoutBtn" onclick="logout()">Logout</button>
+</div>
+
+<!-- Admin Panel -->
+<div id="adminPanel" style="display:none;position:fixed;top:60px;right:20px;background:white;border:none;border-radius:16px;padding:0;width:420px;max-height:580px;overflow:hidden;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+    
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#0095f6,#764ba2);padding:18px 24px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+            <div style="color:white;font-size:18px;font-weight:700;">⚙️ Admin Panel</div>
+            <div style="color:rgba(255,255,255,0.7);font-size:12px;margin-top:2px;">Manage users and permissions</div>
+        </div>
+        <button onclick="closeAdminPanel()" style="background:rgba(255,255,255,0.2);border:none;color:white;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&times;</button>
+    </div>
+
+    <!-- User List -->
+    <div id="usersList" style="max-height:480px;overflow-y:auto;padding:12px 16px;"></div>
+</div>
+
+<!-- Feed -->
+<div class="feed" id="feed"></div>
+
+<div id="sidePanel" style="display:none;position:fixed;top:116px;right:60px;width:300px;z-index:997;">
+    <div style="display:flex;gap:6px;">
+        <input id="searchInput" placeholder="Search users..." 
+            onkeyup="if(event.key==='Enter') searchUser()"
+            style="flex:1;padding:8px 12px;border:2px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none;background:white;" />
+        <button onclick="searchUser()" 
+            style="padding:8px 12px;background:#0095f6;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;">🔍</button>
+    </div>
+    <div id="searchResults" style="background:white;border-radius:8px;box-shadow:0 4px 15px rgba(0,0,0,0.1);padding:0px;margin-top:6px;max-height:200px;overflow-y:auto;"></div>
+
+    <!-- 🔵 Friends Panel directly below search -->
+    <div style="background:white;border:2px solid #0095f6;border-radius:8px;padding:15px;margin-top:40px;max-height:400px;overflow-y:auto;box-shadow:0 4px 15px rgba(0,0,0,0.1);">
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px;color:#262626;">👥 Friends</div>
+        <div id="friendsPanel"></div>
+    </div>
+</div>
+<!-- 🔔 Admin Report Notification Bell (top left, admin only) -->
+<div id="reportBell" style="display:none;position:fixed;top:15px;left:20px;z-index:1001;">
+    <div onclick="toggleReportPanel()" style="cursor:pointer;position:relative;font-size:24px;">
+        🔔
+        <span id="reportCount" style="position:absolute;top:-6px;right:-8px;background:#ff4757;color:white;border-radius:50%;width:18px;height:18px;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:bold;"></span>
+    </div>
+</div>
+
+<!-- 📋 Report Panel -->
+<div id="reportPanel" style="display:none;position:fixed;top:55px;left:20px;width:380px;max-height:500px;overflow-y:auto;background:white;border:2px solid #ff4757;border-radius:8px;padding:15px;z-index:1000;box-shadow:0 4px 15px rgba(0,0,0,0.2);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="margin:0;color:#ff4757;">⚠️ Reports</h3>
+        <button onclick="toggleReportPanel()" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+    </div>
+    <div id="reportsList"></div>
+</div>
+
+<script>
+const API = "http://127.0.0.1:8000";
+
+// Function to format date in Indian Standard Time (IST)
+function formatInIST(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+// Cursor as magnet - circles get attracted to cursor
+let circles = [];
+let storyContainer = null;
+const magnetRange = 150; // Distance in pixels to start attraction
+const magnetStrength = 0.35; // How much circles move towards cursor (0-1)
+let token = "";
+let currentUsername = "";
+let isAdmin = false;
+let mouseX = 0;
+let mouseY = 0;
+
+// Initialize after DOM is ready
+function initializeMagnet() {
+    circles = document.querySelectorAll('.story');
+    storyContainer = document.querySelector('.stories');
+
+    document.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+
+        circles.forEach((circle) => {
+            const circleRect = circle.getBoundingClientRect();
+            const circleCenterX = circleRect.left + circleRect.width / 2;
+            const circleCenterY = circleRect.top + circleRect.height / 2;
+
+            // Calculate distance from cursor to circle
+            const dx = mouseX - circleCenterX;
+            const dy = mouseY - circleCenterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < magnetRange) {
+                // Calculate attraction direction and strength
+                const attractionStrength = 1 - (distance / magnetRange); // Stronger when closer
+                const moveX = dx * magnetStrength * attractionStrength;
+                const moveY = dy * magnetStrength * attractionStrength;
+
+                circle.style.position = 'relative';
+                circle.style.transform = `translate(${moveX}px, ${moveY}px)`;
+                circle.style.animation = 'none'; // Stop floating animation when attracted
+            } else {
+                // Reset to normal state
+                circle.style.transform = 'translate(0, 0)';
+                circle.style.animation = '';
+                
+                // Reapply animation based on index with slower speeds
+                const index = Array.from(circles).indexOf(circle);
+                if (index === 0 || index === circles.length - 1) {
+                    circle.style.animation = 'floatMotion 3.5s ease-in-out infinite';
+                } else if (index === 1 || index === circles.length - 2) {
+                    circle.style.animation = 'floatMotion 4s ease-in-out infinite';
+                } else {
+                    circle.style.animation = 'floatMotion 5.5s ease-in-out infinite';
+                }
+            }
+        });
+    });
+}
+
+// Initialize when page loads
+initializeMagnet();
+
+// Profile picture upload handler
+document.getElementById("profileForm").onsubmit = async (e) => {
+    e.preventDefault();
+
+    if (!token) {
+        alert("Please login first!");
+        return;
+    }
+
+    const formData = new FormData(e.target);
+
+    const res = await fetch(API + "/upload-profile", {
+        method: "POST",
+        headers: {
+            "Authorization": "Bearer " + token
+        },
+        body: formData
+    });
+
+    if (!res.ok) {
+        const error = await res.json();
+        alert("Profile update failed: " + (error.detail ? error.detail : JSON.stringify(error)));
+        return;
+    }
+
+    e.target.reset();
+    loadFeed();
+    // Refresh current user's profile picture
+    await loadUserProfile(currentUsername);
+    alert("Profile picture updated successfully!");
+};
+
+document.getElementById("uploadForm").onsubmit = async (e) => {
+    e.preventDefault();
+
+    if (!token) {
+        alert("Please login first!");
+        return;
+    }
+
+    const formData = new FormData(e.target);
+
+    const res = await fetch(API + "/upload", {
+        method: "POST",
+        headers: {
+            "Authorization": "Bearer " + token
+        },
+        body: formData
+    });
+
+    if (!res.ok) {
+        const error = await res.json();
+        alert("Upload failed: " + error.detail);
+        return;
+    }
+
+    e.target.reset();
+    loadFeed();
+    alert("Upload successful!");
+};
+
+async function loadFeed() {
+    if (!token) {
+        document.getElementById("feed").innerHTML = 
+            '<div style="text-align:center;padding:40px;color:#999;">Please login to see posts</div>';
+        return;
+    }
+
+    const res = await fetch(API + "/feed", {
+        headers: { "Authorization": "Bearer " + token }
+    });
+
+    if (!res.ok) {
+        console.error("Feed error:", res.status);
+        return;
+    }
+
+    const data = await res.json();
+    const feed = document.getElementById("feed");
+    feed.innerHTML = "";
+
+    // ✅ Check frozen AFTER data is fetched
+    if (data.is_frozen) {
+        feed.innerHTML = `
+            <div style="text-align:center;padding:30px;background:#fff3cd;border:2px solid #f39c12;border-radius:12px;margin-bottom:20px;">
+                <div style="font-size:40px;margin-bottom:10px;">🧊</div>
+                <div style="font-size:16px;font-weight:700;color:#856404;">Your account is frozen</div>
+                <div style="font-size:13px;color:#856404;margin-top:6px;">You cannot post, comment, or message until the freeze is lifted.</div>
+            </div>
+        `;
+        return;
+    }
+
+    data.posts.forEach(post => {
+        const div = document.createElement("div");
+        div.className = "post";
+
+        const canDelete = post.username === currentUsername || isAdmin;
+        const deleteButtonHTML = canDelete 
+            ? `<span class="delete-btn" onclick="deletePost('${post.id}', '${post.username}')">🗑</span>` 
+            : '';
+
+        div.innerHTML = `
+            <div class="post-header">
+                <img class="avatar" src="${post.profile_pic || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 30 30%22%3E%3Ccircle cx=%2215%22 cy=%2215%22 r=%2215%22 fill=%22%23999%22/%3E%3C/svg%3E'}" alt="avatar" />
+                <span class="username">${post.username}</span>
+                ${deleteButtonHTML}
+            </div>
+            <div class="image-container" ondblclick="doubleLike('${post.id}', this)">
+                <img src="${post.url}" />
+                <div class="heart">❤️</div>
+            </div>
+            <div class="actions">
+                <span onclick="likePost('${post.id}', this)">🤍</span>
+            </div>
+            <div class="comments" id="comments-${post.id}"></div>
+            <div class="comment-box">
+                <input type="text" id="input-${post.id}" placeholder="Add a comment..." />
+                <button onclick="addComment('${post.id}')">Post</button>
+            </div>
+            <div class="likes">${post.likes || 0} likes</div>
+            <div class="caption"><b>${post.username}</b> ${post.caption}</div>
+            <div class="time">${formatInIST(post.created_at + 'Z')}</div>
+        `;
+
+        feed.appendChild(div);
+        loadComments(post.id);
+    });
+}
+
+async function likePost(postId, el) {
+    const res = await fetch(`${API}/like/${postId}`, {
+        method: "POST"
+    });
+
+    const data = await res.json();
+    el.textContent = "❤️";
+    el.closest(".post").querySelector(".likes").innerText = data.likes + " likes";
+}
+
+async function deletePost(postId, postUsername) {
+    const confirmDelete = confirm("Delete this post?");
+    if (!confirmDelete) return;
+
+    const res = await fetch(`${API}/post/${postId}`, {
+        method: "DELETE",
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    });
+
+    if (!res.ok) {
+        const error = await res.json();
+        alert("Delete failed: " + error.detail);
+        return;
+    }
+
+    loadFeed();
+}
+
+async function addComment(postId) {
+    const input = document.getElementById(`input-${postId}`);
+    const text = input.value.trim();
+    if (!text) return;
+
+    await fetch(`${API}/comment/${postId}`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token },  
+        body: new URLSearchParams({ text })
+    });
+
+    input.value = "";
+    loadComments(postId);
+}
+
+async function loadComments(postId) {
+    const res = await fetch(`${API}/comments/${postId}`);
+    const data = await res.json();
+
+    const container = document.getElementById(`comments-${postId}`);
+    container.innerHTML = "";
+
+    data.forEach(c => {
+        const div = document.createElement("div");
+        // In loadComments(), change:
+        div.innerHTML = `<b>${c.username}</b> ${c.text}<br/>
+            <small style="color:#999;">${formatInIST(c.created_at + 'Z')}</small>`;
+        container.appendChild(div);
+    });
+}
+
+
+
+async function signin() {
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    if (!username || !password) {
+        alert("Please enter username and password!");
+        return;
+    }
+
+    const res = await fetch("http://127.0.0.1:8000/login", {
+        method: "POST",
+        body: new URLSearchParams({ username, password })
+    });
+
+    if (!res.ok) {
+        const error = await res.json();
+        alert("Login failed: " + error.detail);
+        return;
+    }
+
+    const data = await res.json();
+    token = data.access_token;
+    currentUsername = username;
+    console.log("TOKEN:", token);
+
+    // Load current user's profile picture
+    await loadUserProfile(username);
+
+    // Hide auth box and show top right section with profile and logout
+    document.getElementById("authBox").style.display = "none";
+    document.getElementById("uploadBox").style.display = "block";
+    document.getElementById("topRightSection").style.display = "flex";
+
+    // Show admin button and panel if user is admin
+    if (currentUsername === "admin") {
+        const adminBtn = document.getElementById("adminBtn");
+        if (adminBtn) adminBtn.style.display = "block";
+    }
+
+    alert("Logged in successfully!");
+}
+
+async function loadUserProfile(username) {
+    try {
+        const res = await fetch(API + "/profile/" + username);
+        if (res.ok) {
+            const profile = await res.json();
+            const profileImg = document.getElementById("userProfilePic");
+            if (profile.profile_pic) {
+                profileImg.src = profile.profile_pic;
+            } else {
+                profileImg.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 30 30%22%3E%3Ccircle cx=%2215%22 cy=%2215%22 r=%2715%22 fill=%22%23999%22/%3E%3C/svg%3E';
+            }
+        }
+    } catch (e) {
+        console.log("Error loading profile:", e);
+    }
+}
+
+async function signup() {
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    if (!username || !password) {
+        alert("Please enter username and password!");
+        return;
+    }
+
+    const res = await fetch("http://127.0.0.1:8000/signup", {
+        method: "POST",
+        body: new URLSearchParams({ username, password })
+    });
+
+    const data = await res.json();
+    console.log("Signup response:", res.status, data);
+
+    if (!res.ok) {
+        alert("Signup failed: " + (data.detail || "Unknown error"));
+        return;
+    }
+
+    alert("User created! Please login.");
+}
+
+function openAdminPanel() {
+    document.getElementById("adminPanel").style.display = "block";
+    loadAllUsers();
+}
+
+function closeAdminPanel() {
+    document.getElementById("adminPanel").style.display = "none";
+}
+
+// ========== FREEZE ==========
+async function freezeUser(username) {
+    const hours = prompt(`Freeze ${username} for how many hours?\n(e.g. 1, 24, 48, 168 for 1 week)`);
+    if (!hours || isNaN(hours) || hours <= 0) return;
+
+    const res = await fetch(`${API}/admin/freeze/${username}`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token },
+        body: new URLSearchParams({ hours: parseInt(hours) })
+    });
+
+    if (res.ok) {
+        alert(`${username} has been frozen for ${hours} hours ❄️`);
+        loadAllUsers();
+    } else {
+        const error = await res.json();
+        alert("Failed: " + error.detail);
+    }
+}
+
+async function unfreezeUser(username) {
+    const res = await fetch(`${API}/admin/unfreeze/${username}`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token }
+    });
+
+    if (res.ok) {
+        alert(`${username} has been unfrozen ✅`);
+        loadAllUsers();
+    } else {
+        const error = await res.json();
+        alert("Failed: " + error.detail);
+    }
+}
+
+// ========== ADMIN MESSAGING ==========
+async function toggleAdminChat(username) {
+    const chatBox = document.getElementById(`adminChat-${username}`);
+    if (!chatBox) return;
+
+    if (chatBox.style.display === "block") {
+        chatBox.style.display = "none";
+        return;
+    }
+
+    chatBox.style.display = "block";
+    await loadAdminChatHistory(username);
+}
+
+async function loadAdminChatHistory(username) {
+    const res = await fetch(`${API}/admin/messages/${username}`, {
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (!res.ok) return;
+
+    const messages = await res.json();
+    const container = document.getElementById(`adminChatHistory-${username}`);
+    container.innerHTML = "";
+
+    if (messages.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:#999;font-size:12px;">No messages yet</div>';
+        return;
+    }
+
+    messages.forEach(m => {
+        const isAdmin = m.sender === currentUsername;
+        const div = document.createElement("div");
+        div.style.cssText = `
+            max-width:85%;
+            padding:6px 10px;
+            border-radius:12px;
+            font-size:12px;
+            word-break:break-word;
+            align-self:${isAdmin ? "flex-end" : "flex-start"};
+            background:${isAdmin ? "linear-gradient(135deg,#0095f6,#764ba2)" : "#ffe0b2"};
+            color:${isAdmin ? "white" : "#262626"};
+            border:${isAdmin ? "none" : "1px solid #ffb74d"};
+        `;
+        div.innerHTML = `
+            ${!isAdmin ? `<div style="font-size:10px;font-weight:700;margin-bottom:2px;">📨 Admin</div>` : ""}
+            ${m.text}
+            <div style="font-size:10px;opacity:0.7;margin-top:2px;">${formatInIST(m.created_at + 'Z')}</div>
+        `;
+        container.appendChild(div);
+    });
+
+    container.scrollTop = container.scrollHeight;
+}
+
+async function sendAdminMessage(username) {
+    const input = document.getElementById(`adminChatInput-${username}`);
+    const text = input.value.trim();
+    if (!text) return;
+
+    const res = await fetch(`${API}/admin/message/${username}`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token },
+        body: new URLSearchParams({ text })
+    });
+
+    if (res.ok) {
+        input.value = "";
+        await loadAdminChatHistory(username);
+    } else {
+        const error = await res.json();
+        alert("Failed: " + error.detail);
+    }
+}
+
+async function loadAllUsers() {
+    const res = await fetch(API + "/all-users", {
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const list = document.getElementById("usersList");
+    list.innerHTML = "";
+
+    data.users.forEach(u => {
+        const div = document.createElement("div");
+        div.style.cssText = "padding:12px;margin-bottom:10px;border-radius:10px;background:#f8f9fa;border:1px solid #e9ecef;";
+
+        div.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:${!u.is_admin ? '10px' : '0'};">
+                <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#0095f6,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;flex-shrink:0;">
+                    ${u.username.charAt(0).toUpperCase()}
+                </div>
+                <div style="flex:1;">
+                    <div style="font-weight:700;font-size:14px;color:#262626;">
+                        ${u.username} ${u.is_admin ? "👑" : ""} ${u.is_frozen ? "🧊" : ""}
+                    </div>
+                    <div style="font-size:11px;color:#999;">${u.is_admin ? "Administrator" : u.is_frozen ? "Frozen" : "Active"}</div>
+                </div>
+            </div>
+
+            ${!u.is_admin ? `
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <button onclick="viewUserFriends('${u.username}')"
+                    style="flex:1;padding:7px 10px;font-size:12px;cursor:pointer;background:#e8f4fd;color:#0095f6;border:1px solid #0095f6;border-radius:8px;font-weight:600;">
+                    👥 Friends
+                </button>
+                <button onclick="toggleAdminChat('${u.username}')"
+                    style="flex:1;padding:7px 10px;font-size:12px;cursor:pointer;background:#e8f4fd;color:#764ba2;border:1px solid #764ba2;border-radius:8px;font-weight:600;">
+                    💬 Message
+                </button>
+                <button onclick="deleteUser('${u.username}')"
+                    style="flex:1;padding:7px 10px;font-size:12px;cursor:pointer;background:#fff0f0;color:#ff4757;border:1px solid #ff4757;border-radius:8px;font-weight:600;">
+                    🗑 Delete
+                </button>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button onclick="resetPassword('${u.username}')"
+                    style="flex:1;padding:7px 10px;font-size:12px;cursor:pointer;background:#f0f0f0;color:#444;border:1px solid #ddd;border-radius:8px;font-weight:600;">
+                    🔑 Reset
+                </button>
+                ${u.is_frozen ?
+                    `<button onclick="unfreezeUser('${u.username}')"
+                        style="flex:1;padding:7px 10px;font-size:12px;cursor:pointer;background:#e8f8e8;color:#28a745;border:1px solid #28a745;border-radius:8px;font-weight:600;">
+                        ✅ Unfreeze
+                    </button>` :
+                    `<button onclick="freezeUser('${u.username}')"
+                        style="flex:1;padding:7px 10px;font-size:12px;cursor:pointer;background:#fff8e1;color:#f39c12;border:1px solid #f39c12;border-radius:8px;font-weight:600;">
+                        🧊 Freeze
+                    </button>`
+                }
+            </div>
+
+            <!-- Admin Chat Box -->
+            <div id="adminChat-${u.username}" style="display:none;margin-top:10px;background:white;border-radius:8px;border:1px solid #e9ecef;padding:10px;">
+                <div id="adminChatHistory-${u.username}" 
+                    style="max-height:180px;overflow-y:auto;margin-bottom:8px;display:flex;flex-direction:column;gap:6px;">
+                </div>
+                <div style="display:flex;gap:6px;">
+                    <input id="adminChatInput-${u.username}" placeholder="Message ${u.username}..." 
+                        onkeyup="if(event.key==='Enter') sendAdminMessage('${u.username}')"
+                        style="flex:1;padding:6px 10px;border:1px solid #e0e0e0;border-radius:20px;font-size:12px;outline:none;" />
+                    <button onclick="sendAdminMessage('${u.username}')"
+                        style="padding:6px 12px;background:linear-gradient(135deg,#0095f6,#764ba2);color:white;border:none;border-radius:20px;font-size:12px;cursor:pointer;">
+                        Send
+                    </button>
+                </div>
+            </div>
+
+            <div id="friendsOf-${u.username}" style="display:none;margin-top:10px;padding:10px;background:white;border-radius:8px;border:1px solid #e9ecef;font-size:12px;"></div>
+            ` : ''}
+        `;
+        list.appendChild(div);
+    });
+}
+
+async function viewUserFriends(username) {
+    const container = document.getElementById(`friendsOf-${username}`);
+
+    // Toggle off if already open
+    if (container.style.display === "block") {
+        container.style.display = "none";
+        return;
+    }
+
+    const res = await fetch(`${API}/friends/${username}`, {
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const defaultPic = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 30 30%22%3E%3Ccircle cx=%2215%22 cy=%2215%22 r=%2215%22 fill=%22%23999%22/%3E%3C/svg%3E';
+
+    let html = "";
+
+    if (data.friends.length > 0) {
+        html += `<b>Friends (${data.friends.length})</b><br/>`;
+        data.friends.forEach(f => {
+            html += `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;">
+                <img src="${f.profile_pic || defaultPic}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;"/>
+                <span>${f.username}</span>
+            </div>`;
+        });
+    }
+
+    if (data.pending_received.length > 0) {
+        html += `<b>Pending Requests (${data.pending_received.length})</b><br/>`;
+        data.pending_received.forEach(f => {
+            html += `<div style="padding:2px 0;color:#888;">⏳ ${f.username}</div>`;
+        });
+    }
+
+    if (!html) html = '<span style="color:#999;">No friends yet</span>';
+
+    container.innerHTML = html;
+    container.style.display = "block";
+}
+
+async function resetPassword(targetUsername) {
+    const newPassword = prompt(`New password for ${targetUsername}:`);
+    if (!newPassword) return;
+    const res = await fetch(API + "/update-user-password", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token },
+        body: new URLSearchParams({ target_username: targetUsername, new_password: newPassword })
+    });
+    if (res.ok) alert("Password updated!");
+    else alert("Failed to update password.");
+}
+async function login() {
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    if (!username || !password) {
+        alert("Please enter username and password!");
+        return;
+    }
+
+    const res = await fetch("http://127.0.0.1:8000/login", {
+        method: "POST",
+        body: new URLSearchParams({ username, password })
+    });
+
+    if (!res.ok) {
+        const error = await res.json();
+        alert("Login failed: " + error.detail);
+        return;
+    }
+
+    const data = await res.json();
+    token = data.access_token;
+    currentUsername = username;
+    isAdmin = data.is_admin;  
+
+    if (isAdmin) {
+        document.getElementById("adminBtn").style.display = "block";
+    }
+    console.log("TOKEN:", token);
+
+    // Load current user's profile picture
+    await loadUserProfile(username);
+
+    // Hide auth box and show top right section with profile and logout
+    document.getElementById("authBox").style.display = "none";
+    document.getElementById("uploadBox").style.display = "block";
+    document.getElementById("topRightSection").style.display = "flex";
+
+    // Load feed after login
+    loadFeed();
+    if (isAdmin) {
+    loadReportBell();  // ✅ add this
+    }
+
+    if (!isAdmin) {
+        document.getElementById("sidePanel").style.display = "block";
+        loadFriends();
+    }
+
+    alert("Logged in successfully!");
+}
+
+async function deleteUser(username) {
+    const confirm_ = confirm(`Permanently delete user "${username}"?\nThis will delete all their posts, comments and friendships.`);
+    if (!confirm_) return;
+
+    const res = await fetch(`${API}/user/${username}`, {
+        method: "DELETE",
+        headers: { "Authorization": "Bearer " + token }
+    });
+
+    if (res.ok) {
+        alert(`User "${username}" deleted successfully.`);
+        loadAllUsers(); // refresh admin panel
+    } else {
+        const error = await res.json();
+        alert("Failed: " + error.detail);
+    }
+}
+
+// ========== MESSAGING ==========
+async function toggleChat(username) {
+    const chatBox = document.getElementById(`chat-${username}`);
+    if (!chatBox) return;
+
+    if (chatBox.style.display === "block") {
+        chatBox.style.display = "none";
+        return;
+    }
+
+    chatBox.style.display = "block";
+    await loadChatHistory(username);
+}
+
+async function loadChatHistory(username) {
+    const res = await fetch(`${API}/messages/${username}`, {
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (!res.ok) return;
+
+    const messages = await res.json();
+    const container = document.getElementById(`chatHistory-${username}`);
+    container.innerHTML = "";
+
+    if (messages.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:#999;font-size:12px;">No messages yet. Say hi! 👋</div>';
+        return;
+    }
+
+    messages.forEach(m => {
+        const isMe = m.sender === currentUsername;
+        const isAdminMsg = m.sender === "admin";  // ✅ detect admin message
+        const div = document.createElement("div");
+        div.style.cssText = `
+            max-width:80%;
+            padding:6px 10px;
+            border-radius:12px;
+            font-size:12px;
+            word-break:break-word;
+            align-self:${isMe ? "flex-end" : "flex-start"};
+            background:${isAdminMsg ? "linear-gradient(135deg,#ff6b6b,#764ba2)" : isMe ? "#0095f6" : "#e0e0e0"};
+            color:${isAdminMsg || isMe ? "white" : "#262626"};
+            border:${isAdminMsg ? "2px solid #ff4757" : "none"};
+        `;
+        div.innerHTML = `
+            ${isAdminMsg ? `<div style="font-size:10px;font-weight:700;margin-bottom:2px;">📨 Admin Message</div>` : ""}
+            ${m.text}
+            <div style="font-size:10px;opacity:0.7;margin-top:2px;">${formatInIST(m.created_at + 'Z')}</div>
+        `;
+        container.appendChild(div);
+    });
+
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+}
+
+async function sendMessage(username) {
+    const input = document.getElementById(`chatInput-${username}`);
+    const text = input.value.trim();
+    if (!text) return;
+
+    const res = await fetch(`${API}/message/${username}`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token },
+        body: new URLSearchParams({ text })
+    });
+
+    if (res.ok) {
+        input.value = "";
+        await loadChatHistory(username); // refresh chat
+    } else {
+        const error = await res.json();
+        alert("Failed: " + error.detail);
+    }
+}
+
+function logout() {
+    token = "";
+    currentUsername = "";
+    isAdmin = false;
+    document.getElementById("sidePanel").style.display = "none";
+    document.getElementById("authBox").style.display = "flex";
+    document.getElementById("uploadBox").style.display = "none";
+    document.getElementById("topRightSection").style.display = "none";
+    const adminBtn = document.getElementById("adminBtn");
+    if (adminBtn) adminBtn.style.display = "none";
+    document.getElementById("username").value = "";
+    document.getElementById("password").value = "";
+    alert("Logged out!");
+    // Reload page after logout
+    window.location.reload();
+}
+
+function doubleLike(postId, container) {
+    likeAnimation(container);
+
+    // call backend like
+    fetch(`http://127.0.0.1:8000/like/${postId}`, {
+        method: "POST"
+    }).then(res => res.json())
+      .then(data => {
+          const likesDiv = container.parentElement.querySelector(".likes");
+          likesDiv.innerText = data.likes + " likes";
+      });
+}
+
+function toggleLike(el) {
+    el.textContent = el.textContent === "🤍" ? "❤️" : "🤍";
+}
+
+function likeAnimation(container) {
+    const heart = container.querySelector(".heart");
+    heart.classList.add("show");
+
+    setTimeout(() => {
+        heart.classList.remove("show");
+    }, 600);
+}
+// ========== SEARCH ==========
+async function searchUser() {
+    const query = document.getElementById("searchInput").value.trim();
+    if (!query) return;
+
+    const res = await fetch(`${API}/search/${query}`, {
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const resultsDiv = document.getElementById("searchResults");
+    resultsDiv.innerHTML = "";
+
+    if (data.users.length === 0) {
+        resultsDiv.innerHTML = '<div style="color:#999;font-size:13px;">No users found</div>';
+        return;
+    }
+
+    data.users.forEach(u => {
+        const div = document.createElement("div");
+        div.style.cssText = "display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;";
+
+        const defaultPic = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 30 30%22%3E%3Ccircle cx=%2215%22 cy=%2215%22 r=%2215%22 fill=%22%23999%22/%3E%3C/svg%3E';
+
+        let btnHTML = "";
+        if (u.friendship_status === "accepted") {
+            btnHTML = `<button disabled style="padding:4px 10px;border-radius:6px;border:none;background:#e0e0e0;color:#666;font-size:12px;">Friends ✓</button>`;
+        } else if (u.friendship_status === "pending" && u.is_sender) {
+            btnHTML = `<button disabled style="padding:4px 10px;border-radius:6px;border:none;background:#fff3cd;color:#856404;font-size:12px;">Pending...</button>`;
+        } else if (u.friendship_status === "pending" && !u.is_sender) {
+            btnHTML = `<button onclick="acceptFriend('${u.username}')" style="padding:4px 10px;border-radius:6px;border:none;background:#28a745;color:white;font-size:12px;cursor:pointer;">Accept</button>`;
+        } else {
+            btnHTML = `<button onclick="sendFriendRequest('${u.username}')" style="padding:4px 10px;border-radius:6px;border:none;background:#0095f6;color:white;font-size:12px;cursor:pointer;">Add Friend</button>`;
+        }
+
+        div.innerHTML = `
+            <img src="${u.profile_pic || defaultPic}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid #e0e0e0;" />
+            <span style="flex:1;font-weight:600;font-size:14px;">${u.username}</span>
+            ${btnHTML}
+        `;
+        resultsDiv.appendChild(div);
+    });
+}
+
+async function sendFriendRequest(receiver) {
+    const res = await fetch(`${API}/friend-request/${receiver}`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (res.ok) {
+        alert(`Friend request sent to ${receiver}!`);
+        searchUser(); // refresh search results
+        loadFriends(); // refresh friends panel
+    }
+}
+
+async function acceptFriend(sender) {
+    const res = await fetch(`${API}/accept-friend/${sender}`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (res.ok) {
+        loadFriends();
+        searchUser();
+    }
+}
+
+// ========== FRIENDS PANEL ==========
+async function loadFriends() {
+    if (!token) return;
+
+    const res = await fetch(`${API}/friends`, {
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const panel = document.getElementById("friendsPanel");
+    const defaultPic = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 30 30%22%3E%3Ccircle cx=%2215%22 cy=%2215%22 r=%2215%22 fill=%22%23999%22/%3E%3C/svg%3E';
+
+    let html = "";
+
+    // Pending requests received
+    if (data.pending_received.length > 0) {
+        html += `<div style="font-weight:700;font-size:13px;color:#262626;margin-bottom:8px;">Friend Requests</div>`;
+        data.pending_received.forEach(u => {
+            html += `
+                <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0;">
+                    <img src="${u.profile_pic || defaultPic}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" />
+                    <span style="flex:1;font-size:13px;font-weight:600;">${u.username}</span>
+                    <button onclick="acceptFriend('${u.username}')" style="padding:4px 8px;border-radius:6px;border:none;background:#0095f6;color:white;font-size:11px;cursor:pointer;">Accept</button>
+                </div>`;
+        });
+    }
+
+    if (data.friends.length > 0) {
+        html += `<div style="font-weight:700;font-size:13px;color:#262626;margin:12px 0 8px;">Friends (${data.friends.length})</div>`;
+        data.friends.forEach(u => {
+            html += `
+                <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0;">
+                    <img src="${u.profile_pic || defaultPic}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" />
+                    <span style="flex:1;font-size:13px;font-weight:600;">${u.username}</span>
+                    <span onclick="reportUser('${u.username}')" title="Report User"
+                        style="cursor:pointer;font-size:13px;font-weight:bold;width:20px;height:20px;border-radius:50%;border:2px solid #ff4757;color:#ff4757;display:inline-flex;align-items:center;justify-content:center;margin-right:2px;">!</span>
+                    <span onclick="toggleChat('${u.username}')" title="Message" 
+                        style="cursor:pointer;font-size:18px;padding:4px;">💬</span>
+                    <button onclick="removeFriend('${u.username}')" 
+                        style="padding:4px 8px;border-radius:6px;border:none;background:#ff4757;color:white;font-size:11px;cursor:pointer;">
+                        Remove
+                    </button>
+                </div>
+                <div id="chat-${u.username}" style="display:none;background:#f9f9f9;border-radius:8px;padding:10px;margin-bottom:8px;">
+                    <div id="chatHistory-${u.username}" 
+                        style="max-height:180px;overflow-y:auto;margin-bottom:8px;display:flex;flex-direction:column;gap:6px;">
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
+                        <button onclick="deleteChatHistory('${u.username}')"
+                            style="padding:3px 8px;background:none;border:1px solid #ff4757;color:#ff4757;border-radius:6px;font-size:11px;cursor:pointer;">
+                            🗑 Clear Chat
+                        </button>
+                    </div>
+                    <div style="display:flex;gap:6px;">
+                        <input id="chatInput-${u.username}" placeholder="Type a message..." 
+                            onkeyup="if(event.key==='Enter') sendMessage('${u.username}')"
+                            style="flex:1;padding:6px 10px;border:1px solid #e0e0e0;border-radius:20px;font-size:12px;outline:none;" />
+                        <button onclick="sendMessage('${u.username}')"
+                            style="padding:6px 12px;background:#0095f6;color:white;border:none;border-radius:20px;font-size:12px;cursor:pointer;">
+                            Send
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    if (data.pending_received.length === 0 && data.friends.length === 0) {
+        html = '<div style="color:#999;font-size:13px;text-align:center;padding:20px 0;">No friends yet.<br/>Search for users to add!</div>';
+    }
+
+    panel.innerHTML = html;
+}
+async function removeFriend(username) {
+    const confirm_ = confirm(`Remove ${username} from friends?`);
+    if (!confirm_) return;
+
+    const res = await fetch(`${API}/friend/${username}`, {
+        method: "DELETE",
+        headers: { "Authorization": "Bearer " + token }
+    });
+
+    if (res.ok) {
+        loadFriends();       // refresh friends panel
+        searchUser();        // refresh search results if open
+    } else {
+        const error = await res.json();
+        alert("Failed: " + error.detail);
+    }
+}
+
+async function deleteChatHistory(username) {
+    const confirm_ = confirm(`Clear all messages with ${username}?\nThis cannot be undone.`);
+    if (!confirm_) return;
+
+    const res = await fetch(`${API}/messages/${username}`, {
+        method: "DELETE",
+        headers: { "Authorization": "Bearer " + token }
+    });
+
+    if (res.ok) {
+        await loadChatHistory(username);
+    } else {
+        const error = await res.json();
+        alert(error.detail); // ✅ shows proper message if blocked by report
+    }
+}
+
+// ========== REPORTS ==========
+async function reportUser(username) {
+    const reason = prompt(`Why are you reporting ${username}?\n(optional - press OK to skip)`);
+    if (reason === null) return; // user pressed Cancel
+
+    const res = await fetch(`${API}/report/${username}`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token },
+        body: new URLSearchParams({ reason: reason || "" })
+    });
+
+    if (res.ok) {
+        alert(`${username} has been reported. Admin will review the chat history.`);
+    } else {
+        const error = await res.json();
+        alert("Failed: " + error.detail);
+    }
+}
+
+async function loadReportBell() {
+    if (!isAdmin) return;
+
+    const res = await fetch(`${API}/admin/reports`, {
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const bell = document.getElementById("reportBell");
+    const countEl = document.getElementById("reportCount");
+
+    if (data.count > 0) {
+        bell.style.display = "block";
+        countEl.textContent = data.count;
+    } else {
+        bell.style.display = "none";
+    }
+}
+
+function toggleReportPanel() {
+    const panel = document.getElementById("reportPanel");
+    if (panel.style.display === "block") {
+        panel.style.display = "none";
+        return;
+    }
+    panel.style.display = "block";
+    loadReports();
+}
+
+async function loadReports() {
+    const res = await fetch(`${API}/admin/reports`, {
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const list = document.getElementById("reportsList");
+    list.innerHTML = "";
+
+    if (data.reports.length === 0) {
+        list.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">No pending reports</div>';
+        return;
+    }
+
+    data.reports.forEach(r => {
+        const div = document.createElement("div");
+        div.style.cssText = "border:1px solid #ffe0e0;border-radius:8px;padding:12px;margin-bottom:12px;background:#fff9f9;";
+
+        // Build message history HTML
+        let messagesHTML = "";
+        if (r.messages.length === 0) {
+            messagesHTML = '<div style="color:#999;font-size:11px;font-style:italic;">No messages between these users</div>';
+        } else {
+            r.messages.forEach(m => {
+                const isReporter = m.sender === r.reporter;
+                messagesHTML += `
+                    <div style="margin:3px 0;padding:4px 8px;border-radius:8px;font-size:11px;
+                        background:${isReporter ? "#e3f2fd" : "#fce4ec"};
+                        text-align:${isReporter ? "left" : "right"};">
+                        <b>${m.sender}:</b> ${m.text}
+                        <div style="font-size:9px;color:#999;">${formatInIST(m.created_at + 'Z')}</div>
+                    </div>`;
+            });
+        }
+
+        div.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div>
+                    <span style="font-size:13px;font-weight:700;color:#ff4757;">⚠️ ${r.reported}</span>
+                    <span style="font-size:11px;color:#999;"> reported by ${r.reporter}</span>
+                </div>
+                <button onclick="markReviewed('${r.id}')" 
+                    style="padding:4px 8px;background:#28a745;color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">
+                    ✓ Reviewed
+                </button>
+            </div>
+            ${r.reason ? `<div style="font-size:12px;color:#666;margin-bottom:8px;">Reason: ${r.reason}</div>` : ""}
+            <div style="font-size:11px;font-weight:600;color:#262626;margin-bottom:6px;">💬 Chat History:</div>
+            <div style="max-height:150px;overflow-y:auto;background:white;border-radius:6px;padding:6px;">
+                ${messagesHTML}
+            </div>
+            <div style="font-size:10px;color:#999;margin-top:6px;">${formatInIST(r.created_at + 'Z')}</div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+async function markReviewed(reportId) {
+    const res = await fetch(`${API}/admin/report/${reportId}/reviewed`, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token }
+    });
+
+    if (res.ok) {
+        loadReports();       // refresh report list
+        loadReportBell();    // refresh bell count
+    }
+}
+
+loadFeed();
+
+</script>
+
+</body>
+</html>
