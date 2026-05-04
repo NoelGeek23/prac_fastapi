@@ -1,0 +1,52 @@
+# Application Purpose
+prac_fastapi is a backend web application built using FastAPI designed to provide social media functionalities such as user management, posting images, commenting, friendships, messaging, and reporting.
+
+# Features and Capabilities
+- User authentication with password hashing (Argon2) and JWT token creation
+- Database models for posts, comments, users, friendships, messages, and reports
+- Asynchronous database access using SQLAlchemy with asyncpg driver for PostgreSQL
+- Environment configuration via `.env` file
+- Uvicorn server for ASGI app hosting
+- Support for image uploads and file metadata
+
+# Entry Points
+- `main.py` runs the Uvicorn server hosting the FastAPI app located in `app/app.py`.
+
+# Dependencies
+- FastAPI for the web framework
+- Uvicorn for ASGI server
+- SQLAlchemy with async support for ORM
+- asyncpg and psycopg2-binary for PostgreSQL connectivity
+- python-jose for JWT handling
+- passlib[argon2] for password hashing
+- python-dotenv for environment variable loading
+- python-multipart and aiofiles for file uploads
+- cloudinary and imagekitio for image management
+
+# Configuration
+- `.env` file holds sensitive configuration such as `DATABASE_URL`, `SECRET_KEY`, and `BASE_URL`.
+- Database URL is adapted for asyncpg and SSL context is applied for Neon-hosted PostgreSQL.
+
+# Tests
+- No tests or test framework detected.
+
+# Build Commands
+- No explicit build system; dependencies installed via `pip install -r requirements.txt`.
+
+# Deployment Hints
+- `Procfile` present for deployment on platforms like Heroku.
+- Uses environment variables for secrets and database connection.
+- Uvicorn runs app with reload enabled for development.
+
+# Risks
+- No tests present, so code quality and stability are unverified.
+- Secrets like `SECRET_KEY` default to insecure values if not set.
+- Database migrations and schema versioning not addressed.
+- No explicit security headers or rate limiting mentioned.
+- Reload enabled in production server command could cause performance issues.
+
+# Recommendations
+- Add tests and CI validation.
+- Secure secret management.
+- Add database migration tooling.
+- Harden production deployment settings.

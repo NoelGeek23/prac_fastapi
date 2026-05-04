@@ -1,7 +1,7 @@
 [project]
 name = "prac-fastapi"
 version = "0.1.0"
-description = "Add your description here"
+description = "Social media backend API built with FastAPI"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -21,6 +21,5 @@ dependencies = [
     "python-multipart",
     "aiofiles",
     "python-dotenv",
-    "cloudinary",
+    "cloudinary"
 ]
-
